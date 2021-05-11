@@ -41,78 +41,34 @@ namespace PSXMemoryCard
                 //file opened
                 byte[] MemoryCardFile = File.ReadAllBytes(openFileDialog.FileName);
 
-                //Lets go ahead and make a new memory card
+                //Lets go ahead and make a new memory card if there isnt one loaded up
                 if (memoryCardsList == null)
                     memoryCardsList = new List<MemoryCard>();
+                //Add it to the list
                 memoryCardsList.Add(new MemoryCard(MemoryCardFile));
+
+                memoryCardsList[memoryCardsList.Count - 1].FullFilePath = openFileDialog.FileName;
+
+                tabControl1.SelectedIndex = tabControl1.TabPages.Count - 1;
 
                 //Set our tabbed list title
                 if (tabControl1.TabCount <= 1 && memoryCardsList.Count <= 1)
                 {
                     //this is our only tab, lets change the name
                     tabControl1.TabPages[tabControl1.TabCount - 1].Text = openFileDialog.SafeFileName;
-                    infoStatusLabel.Text = openFileDialog.FileName;
+                    //Add New List View
+                    CreateNewList(memoryCardsList[memoryCardsList.Count - 1]);
                 }
                 else
                 {
+                    //Add a new tab/memory card
                     tabControl1.TabPages.Add(openFileDialog.SafeFileName);
                     tabControl1.SelectedIndex = tabControl1.TabPages.Count - 1;
-                    infoStatusLabel.Text = openFileDialog.FileName;
-                    //Add new listview...
+                    //Add New List View
                     CreateNewList(memoryCardsList[memoryCardsList.Count - 1]);
-                    return;
                 }
-
-                
+                infoStatusLabel.Text = openFileDialog.FileName;
             }
-
-            int index = 0;
-            var imageList = new ImageList();
-            foreach (SaveFile item in memoryCardsList[tabControl1.SelectedIndex].SaveFiles)
-            {
-                if (item.SaveFileName != null)
-                {
-                    if (item.IconFrames > 0)
-                        imageList.Images.Add(index.ToString(), item.Icons[0]);
-                    else
-                        imageList.Images.Add(index.ToString(), new Bitmap(16, 16));
-
-                    ListViewItem tempItem = new ListViewItem
-                    {
-                        ImageIndex = index,
-                        Text = item.SaveFileName
-                    };
-
-                    //Handle linked slots
-                    if(item.SaveFileName == "Linked Slot")
-                        tempItem.ImageIndex = index - 1;
-
-                    listView1.Items.Add(tempItem);
-                    listView1.Items[listView1.Items.Count - 1].SubItems.Add(item.Region);
-                    listView1.Items[listView1.Items.Count - 1].SubItems.Add(item.ProductCode);
-                    listView1.Items[listView1.Items.Count - 1].SubItems.Add(item.Identifier);
-                }
-                else
-                {
-                    ListViewItem tempItem = new ListViewItem
-                    {
-                        Text = "Free Slot"
-                    };
-                    listView1.Items.Add(tempItem);
-                }
-                index++;
-            }
-            var picstoadd = 15 - imageList.Images.Count;
-            if (imageList.Images.Count < 15)
-            {
-                for (int i = 0; i < picstoadd; i++)
-                {
-                    imageList.Images.Add(index.ToString(), new Bitmap(16, 16));
-                }
-            }
-
-            listView1.SmallImageList = imageList;
-            listView1.LargeImageList = imageList;
         }
 
         private void listView1_DoubleClick(object sender, EventArgs e)
@@ -137,8 +93,10 @@ namespace PSXMemoryCard
             ListView tempList = new ListView
             {
                 Size = new Size(495, 286),
-                Location = new Point(6,6),
-                View = View.Details
+                Location = new Point(6, 6),
+                View = View.Details,
+                FullRowSelect = true,
+                MultiSelect = false
             };
 
             tempList.Columns.Add("Title", 247);
@@ -164,8 +122,8 @@ namespace PSXMemoryCard
                     };
 
                     //Handle linked slots
-                    if (item.SaveFileName == "Linked Slot")
-                        tempItem.ImageIndex = index - 1;
+                    //if (item.SaveFileName == "Linked Slot")
+                    //    tempItem.ImageIndex = index - 1;
 
                     tempList.Items.Add(tempItem);
                     tempList.Items[tempList.Items.Count - 1].SubItems.Add(item.Region);
@@ -174,6 +132,11 @@ namespace PSXMemoryCard
                 }
                 else
                 {
+                    if (item.IconFrames > 0)
+                        imageList.Images.Add(index.ToString(), item.Icons[0]);
+                    else
+                        imageList.Images.Add(index.ToString(), new Bitmap(16, 16));
+
                     ListViewItem tempItem = new ListViewItem
                     {
                         Text = "Free Slot"
@@ -229,17 +192,8 @@ namespace PSXMemoryCard
 
         private void informationToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            var senderList = (ListView)sender;
-
-            
-            
-            //var clickedItem = senderList.HitTest(e.Location).Item;
-
-            //if (clickedItem.SubItems[1].Text == "")
-                //return;
-
-           // Forms.SaveFileInfo saveFileInfoWindow = new Forms.SaveFileInfo(memoryCardsList[tabControl1.SelectedIndex], clickedItem.Index);
-            //saveFileInfoWindow.ShowDialog();
+            Forms.SaveFileInfo saveFileInfoWindow = new Forms.SaveFileInfo(memoryCardsList[tabControl1.SelectedIndex], SelectedListViewItem);
+            saveFileInfoWindow.ShowDialog();
         }
 
         private void copySaveToolStripMenuItem_Click(object sender, EventArgs e)
@@ -277,7 +231,6 @@ namespace PSXMemoryCard
             SelectedListView.Items[SelectedListViewItem].SubItems[0].Text = test.SaveFileName;
             
             //Check if this save has a name
-           // if(memoryCardsList[tabControl1.SelectedIndex].SaveFiles[SelectedListViewItem].)
 
             if(SelectedListView.Items[SelectedListViewItem].SubItems.Count > 1)
             {
@@ -315,6 +268,17 @@ namespace PSXMemoryCard
             if (status == SaveFile.SaveStatus.InitialBlockDeleted ||
                 status == SaveFile.SaveStatus.MiddleBlockDeleted ||
                 status == SaveFile.SaveStatus.EndBlockDeleted)
+                return true;
+            return false;
+        }
+
+        private bool shouldInfoBeDisabled(SaveFile.SaveStatus status)
+        {
+            if (status == SaveFile.SaveStatus.EndBlock ||
+                status == SaveFile.SaveStatus.EndBlockDeleted ||
+                status == SaveFile.SaveStatus.Formatted ||
+                status == SaveFile.SaveStatus.MiddleBlock ||
+                status == SaveFile.SaveStatus.MiddleBlockDeleted)
                 return true;
             return false;
         }
@@ -363,7 +327,19 @@ namespace PSXMemoryCard
                     menu.Items[3].Enabled = true;
                 menu.Items[5].Enabled = true;
                 menu.Items[6].Enabled = true;
-                menu.Items[10].Enabled = true;
+                if(shouldInfoBeDisabled(memoryCardsList[tabControl1.SelectedIndex].SaveFiles[SelectedListViewItem].SaveFileStatus))
+                    menu.Items[10].Enabled = false;
+                else
+                    menu.Items[10].Enabled = true;
+            }
+        }
+
+        private void saveToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult dialogResult = MessageBox.Show("Are you sure you want to save this memory card? Changes have been made.", "Save Memory Card Data", MessageBoxButtons.YesNo);
+            if (dialogResult == DialogResult.Yes)
+            {
+                File.WriteAllBytes(memoryCardsList[tabControl1.SelectedIndex].FullFilePath, memoryCardsList[tabControl1.SelectedIndex].MemoryCardData);
             }
         }
     }

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 public class MemoryCard
 {
     private byte[] _memoryCardData;
+    public string FullFilePath;
     public List<SaveFile> SaveFiles;
 
     private readonly int offsetToTableOfContents = 0x80;
@@ -66,7 +67,10 @@ public class MemoryCard
 
     }
 
-
+    public byte[] MemoryCardData
+    {
+        get { return _memoryCardData; }
+    }
 
 
     public byte[] ReadMemoryCardHeaderByIndex(int index)
